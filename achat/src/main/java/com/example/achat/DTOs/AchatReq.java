@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AchatReq {
-    private Date date;
+    //private Date date;
     private String currency;
     private List<Long> productsIds;
 }

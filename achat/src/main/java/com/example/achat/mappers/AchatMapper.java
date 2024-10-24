@@ -44,7 +44,7 @@ public class AchatMapper {
 
     public Achat reqToEntity (AchatReq achatReq){
         Achat achat = Achat.builder()
-                .date(achatReq.getDate())
+                //.date(achatReq.getDate())
                 .currency(achatReq.getCurrency())
                 .total(null)
                 .productsIds(achatReq.getProductsIds())

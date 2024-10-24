@@ -3,6 +3,7 @@ package com.example.achat.web;
 import com.example.achat.DTOs.AchatDTO;
 import com.example.achat.DTOs.AchatReq;
 import com.example.achat.services.AchatService;
+import com.example.achat.services.AchatServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,7 @@ import java.util.List;
 public class AchatController {
 
     @Autowired
-    private AchatService achatService;
+    private AchatServiceImpl achatService;
 
     // Create a new Achat
     @PostMapping
