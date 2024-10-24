@@ -4,7 +4,6 @@ import com.example.achat.DTOs.AchatDTO;
 import com.example.achat.DTOs.AchatReq;
 import com.example.achat.DTOs.ProductDTO;
 import com.example.achat.entities.Achat;
-import com.example.achat.entities.ExchangeRateResponse;
 import com.example.achat.mappers.AchatMapper;
 import com.example.achat.repositories.AchatRepo;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,69 +40,66 @@ public class AchatServiceImpl implements AchatService {
     @Override
     public AchatDTO createAchat(AchatReq achatReq) {
 
-        // Convert the request to an entity
         Achat achat = achatMapper.reqToEntity(achatReq);
         achat.setDate(new Date());
 
-        // Fetch the product details
-        List<ProductDTO> productDTOList = fetchProductDTOs(achat.getProductsIds());
+        List<ProductDTO> productDTOList = convertProductsPrices(
+                achatReq.getCurrency(),
+                fetchProductDTOs(
+                        achat.getProductsIds()
+                )
+        );
 
-        // Calculate the total price based on the currency
-        Double total = calculateTotal(achatReq.getCurrency(), productDTOList);
+        Double total = calculateTotal(productDTOList);
 
-        // Set the calculated total to the Achat entity
         achat.setTotal(total);
 
-        // Save the Achat entity with the total
         achatRepository.save(achat);
 
-        // Return the mapped AchatDTO
         return achatMapper.toDto(achat, productDTOList);
     }
 
-    private Double calculateTotal(String currency, List<ProductDTO> productsList) {
-        // Calculate the total in Euros
-        Double totalInEuros = productsList.stream()
+    private Double calculateTotal(List<ProductDTO> productsList) {
+        return productsList.stream()
                 .map(ProductDTO::getPrice)
                 .reduce(0.0, Double::sum);
 
-        // If the currency is Euros, return the total directly
-        if ("EUR".equalsIgnoreCase(currency)) {
-            return totalInEuros;
-        }
+    }
 
-        // Fetch the exchange rate and convert the total
+    private List<ProductDTO> convertProductsPrices ( String currency, List<ProductDTO> productDTOList){
         Double exchangeRate = fetchExchangeRate(currency);
-        return totalInEuros * exchangeRate;
+        for (ProductDTO productDTO: productDTOList
+             ) {
+            productDTO.setPrice(
+                    productDTO.getPrice() * exchangeRate
+            );
+        }
+        return productDTOList;
     }
 
     private Double fetchExchangeRate(String currency) {
         try {
             log.info("Fetching exchange rate for currency: {}", currency);
 
-            // Fetch the exchange rate from the API and parse it as a JsonNode
             JsonNode response = webClient.get()
                     .uri("https://v6.exchangerate-api.com/v6/cfa5557de1b6fefaa0b037e8/latest/EUR")
                     .retrieve()
                     .bodyToMono(JsonNode.class)
-                    .block(); // Blocking call to wait for the result
+                    .block();
 
             //log.info("Full API response: {}", response);
 
-            // Check if response or rates are null
             if (response == null || !response.has("conversion_rates")) {
                 log.error("Null response or missing conversion rates in API response");
                 throw new RuntimeException("Failed to fetch exchange rates. Response was null or incomplete.");
             }
 
-            // Extract the exchange rate for the given currency
             JsonNode conversionRates = response.get("conversion_rates");
             if (conversionRates == null || !conversionRates.has(currency)) {
                 log.error("No exchange rate found for currency: {}", currency);
                 throw new RuntimeException("Exchange rate for currency " + currency + " not found.");
             }
 
-            // Get the exchange rate as a Double
             Double exchangeRate = conversionRates.get(currency).asDouble();
             log.info("Fetched exchange rate for {}: {}", currency, exchangeRate);
             return exchangeRate;
@@ -113,7 +109,6 @@ public class AchatServiceImpl implements AchatService {
             throw new RuntimeException("Failed to fetch exchange rates.", e);
         }
     }
-
 
 
     @Override
@@ -132,7 +127,6 @@ public class AchatServiceImpl implements AchatService {
 
             Achat updatedAchat = achatRepository.save(achat);
 
-            // Fetch the ProductDTOs using WebClient and return
             List<ProductDTO> productDTOs = fetchProductDTOs(productIds);
             return achatMapper.toDto(updatedAchat, productDTOs);
         } else {
@@ -175,7 +169,6 @@ public class AchatServiceImpl implements AchatService {
             achatDTO = achatMapper.toDto(achat, productDTOList);
             achatDTOList.add(achatDTO);
         }
-        //List<ProductDTO> productDTOList = fetchProductDTOs(achat.getProductsIds());
         return achatDTOList;
     }
 
